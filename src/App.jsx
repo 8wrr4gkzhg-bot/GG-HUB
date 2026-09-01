@@ -534,24 +534,27 @@ const addGame = async (selectedGame) => {
 
   closeGamePicker();
 };
-    const { error } = await supabase
-      .from("user_games")
-      .delete()
-      .eq("id", userGameId)
-      .eq("user_id", currentUser.id);
+ 
 
-    if (error) {
-      console.error(error);
-      showToast("No pudimos eliminar el juego");
-      return;
-    }
+const removeGame = async (userGameId) => {
+  const { error } = await supabase
+    .from("user_games")
+    .delete()
+    .eq("id", userGameId)
+    .eq("user_id", currentUser.id);
 
-    setMyGames((previous) =>
-      previous.filter((game) => game.id !== userGameId)
-    );
+  if (error) {
+    console.error(error);
+    showToast("No pudimos eliminar el juego");
+    return;
+  }
 
-    showToast("Juego eliminado");
-  };
+  setMyGames((previous) =>
+    previous.filter((game) => game.id !== userGameId)
+  );
+
+  showToast("Juego eliminado");
+};
 
   const sendFriendRequest = async (profileId) => {
     if (!currentUser || profileId === currentUser.id) return;
@@ -1393,26 +1396,28 @@ const addGame = async (selectedGame) => {
                     Organizá tus juegos, encontrá jugadores,
                     competí en torneos y construí tu perfil gamer.
                   </p>
+<div className="hero-buttons">
+  <button
+    className="primary-btn"
+    onClick={openGamePicker}
+  >
+    + Agregar juego
+  </button>
 
-                  <div className="hero-buttons">
-                    <button
-                      className="primary-btn"
-                       onClick={openGamePicker}
-                       >
-  + Agregar juego
-</button>
-                      onClick={() => navigate("amigos")}
-                    >
-                      Encontrar jugadores →
-                    </button>
+  <button
+    className="secondary-btn"
+    onClick={() => navigate("amigos")}
+  >
+    Encontrar jugadores →
+  </button>
 
-                    <button
-                      className="secondary-btn"
-                      onClick={() => navigate("torneos")}
-                    >
-                      Ver torneos
-                    </button>
-                  </div>
+  <button
+    className="secondary-btn"
+    onClick={() => navigate("torneos")}
+  >
+    Ver torneos
+  </button>
+</div>
                 </div>
 
                 <div className="hero-visual">
@@ -1675,7 +1680,7 @@ const addGame = async (selectedGame) => {
 
                 <button
                   className="primary-btn"
-                  onClick={addGame}
+                  onClick={openGamePicker}
                 >
                   + Agregar juego
                 </button>
@@ -2385,8 +2390,9 @@ const addGame = async (selectedGame) => {
           )}
         </div>
       </main>
-      {gamePickerOpen && (
-  <div
+      
+        
+{gamePickerOpen && (  <div
     className="game-picker-overlay"
     onClick={closeGamePicker}
   >
