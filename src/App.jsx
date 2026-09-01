@@ -39,7 +39,7 @@ const tournaments = [
 ];
 
 function App() {
-  const [logged, setLogged] = useState(true);
+  const [logged, setLogged] = useState(false);
   const [page, setPage] = useState("inicio");
   const [search, setSearch] = useState("");
   const [notifications, setNotifications] = useState(false);
