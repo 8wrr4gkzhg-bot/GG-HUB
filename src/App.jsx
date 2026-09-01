@@ -44,8 +44,10 @@ function App() {
   const [toast, setToast] = useState("");
 
   const [games, setGames] = useState([]);
-  const [myGames, setMyGames] = useState([]);
-  const [friends, setFriends] = useState([]);
+const [myGames, setMyGames] = useState([]);
+const [gamePickerOpen, setGamePickerOpen] = useState(false);
+const [gamePickerSearch, setGamePickerSearch] = useState("");
+const [friends, setFriends] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [stats, setStats] = useState(null);
@@ -476,64 +478,62 @@ function App() {
     showToast("Sesión cerrada");
   };
 
-  const addGame = async () => {
-    if (!currentUser || !games.length) {
-      showToast("No hay juegos disponibles todavía");
-      return;
-    }
+  const openGamePicker = () => {
+  if (!currentUser || !games.length) {
+    showToast("No hay juegos disponibles todavía");
+    return;
+  }
 
-    const availableGames = games.filter(
-      (game) => !myGames.some((item) => item.game_id === game.id)
-    );
+  const availableGames = games.filter(
+    (game) => !myGames.some((item) => item.game_id === game.id)
+  );
 
-    if (!availableGames.length) {
-      showToast("Ya agregaste todos los juegos disponibles");
-      return;
-    }
+  if (!availableGames.length) {
+    showToast("Ya agregaste todos los juegos disponibles");
+    return;
+  }
 
-    const options = availableGames
-      .map((game, index) => `${index + 1}. ${game.name}`)
-      .join("\n");
+  setGamePickerSearch("");
+  setGamePickerOpen(true);
+};
 
-    const selected = window.prompt(
-      `Elegí el número del juego que querés agregar:\n\n${options}`
-    );
+const closeGamePicker = () => {
+  setGamePickerOpen(false);
+  setGamePickerSearch("");
+};
 
-    if (!selected) return;
+const addGame = async (selectedGame) => {
+  if (!currentUser || !selectedGame) return;
 
-    const index = Number(selected) - 1;
+  const alreadyAdded = myGames.some(
+    (item) => item.game_id === selectedGame.id
+  );
 
-    if (
-      Number.isNaN(index) ||
-      index < 0 ||
-      index >= availableGames.length
-    ) {
-      showToast("Opción inválida");
-      return;
-    }
+  if (alreadyAdded) {
+    showToast("Ese juego ya está en tu perfil");
+    return;
+  }
 
-    const selectedGame = availableGames[index];
+  const { data, error } = await supabase
+    .from("user_games")
+    .insert({
+      user_id: currentUser.id,
+      game_id: selectedGame.id,
+    })
+    .select("*, games(*)")
+    .single();
 
-    const { data, error } = await supabase
-      .from("user_games")
-      .insert({
-        user_id: currentUser.id,
-        game_id: selectedGame.id,
-      })
-      .select("*, games(*)")
-      .single();
+  if (error) {
+    console.error(error);
+    showToast("No pudimos agregar el juego");
+    return;
+  }
 
-    if (error) {
-      console.error(error);
-      showToast("No pudimos agregar el juego");
-      return;
-    }
+  setMyGames((previous) => [...previous, data]);
+  showToast(`${selectedGame.name} agregado a tu perfil 🎮`);
 
-    setMyGames((previous) => [...previous, data]);
-    showToast(`${selectedGame.name} agregado a tu perfil 🎮`);
-  };
-
-  const removeGame = async (userGameId) => {
+  closeGamePicker();
+};
     const { error } = await supabase
       .from("user_games")
       .delete()
@@ -704,6 +704,18 @@ function App() {
       item.games?.name?.toLowerCase().includes(search.toLowerCase())
     );
   }, [myGames, search]);
+  const availableGamesForPicker = useMemo(() => {
+  const query = gamePickerSearch.toLowerCase().trim();
+
+  return games
+    .filter(
+      (game) =>
+        !myGames.some((item) => item.game_id === game.id)
+    )
+    .filter((game) =>
+      game.name?.toLowerCase().includes(query)
+    );
+}, [games, myGames, gamePickerSearch]);
 
   const filteredPlayers = useMemo(() => {
     const query = playerSearch.toLowerCase();
@@ -1385,6 +1397,10 @@ function App() {
                   <div className="hero-buttons">
                     <button
                       className="primary-btn"
+                       onClick={openGamePicker}
+                       >
+  + Agregar juego
+</button>
                       onClick={() => navigate("amigos")}
                     >
                       Encontrar jugadores →
@@ -2369,6 +2385,131 @@ function App() {
           )}
         </div>
       </main>
+      {gamePickerOpen && (
+  <div
+    className="game-picker-overlay"
+    onClick={closeGamePicker}
+  >
+    <div
+      className="game-picker"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="game-picker-header">
+        <div>
+          <span className="eyebrow">GG-HUB GAMING</span>
+          <h2>Elegí tus juegos</h2>
+          <p>
+            Seleccioná los juegos que jugás para completar
+            tu perfil gamer.
+          </p>
+        </div>
+
+        <button
+          className="game-picker-close"
+          onClick={closeGamePicker}
+          aria-label="Cerrar"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="game-picker-search">
+        <span>⌕</span>
+
+        <input
+          autoFocus
+          type="text"
+          value={gamePickerSearch}
+          onChange={(e) =>
+            setGamePickerSearch(e.target.value)
+          }
+          placeholder="Buscar un juego..."
+        />
+      </div>
+
+      <div className="game-picker-grid">
+        {availableGamesForPicker.length === 0 ? (
+          <div className="game-picker-empty">
+            <div>🎮</div>
+            <h3>
+              {games.length === myGames.length
+                ? "Ya agregaste todos los juegos"
+                : "No encontramos ese juego"}
+            </h3>
+            <p>
+              Probá buscando con otro nombre.
+            </p>
+          </div>
+        ) : (
+          availableGamesForPicker.map((game) => {
+            const gameImage =
+              game.icon ||
+              game.image ||
+              game.cover ||
+              game.image_url ||
+              "";
+
+            return (
+              <div
+                className="game-picker-card"
+                key={game.id}
+              >
+                <div className="game-picker-cover">
+                  {gameImage &&
+                  typeof gameImage === "string" &&
+                  gameImage.startsWith("http") ? (
+                    <img
+                      src={gameImage}
+                      alt={game.name}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="game-picker-icon">
+                      {getGameIcon(game.name)}
+                    </div>
+                  )}
+
+                  <div className="game-picker-cover-gradient"></div>
+                </div>
+
+                <div className="game-picker-info">
+                  <h3>{game.name}</h3>
+
+                  <span>
+                    {game.slug
+                      ? `#${game.slug}`
+                      : "Juego disponible"}
+                  </span>
+
+                  <button
+                    className="game-picker-add"
+                    onClick={() => addGame(game)}
+                  >
+                    <span>+</span>
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <div className="game-picker-footer">
+        <span>
+          {availableGamesForPicker.length} juegos disponibles
+        </span>
+
+        <button
+          className="secondary-btn"
+          onClick={closeGamePicker}
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {toast && <div className="toast">✓ {toast}</div>}
     </div>
